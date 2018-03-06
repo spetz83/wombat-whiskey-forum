@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Auth\AuthenticationException;
 use Tests\DatabaseTestCase;
 
 class CreateThreadsTest extends DatabaseTestCase
 {
+    protected function setUp()
+    {
+        parent::setUp();
+        $this->disableExceptionHandling();
+    }
+
     /**
-     *
      * @test
      */
     public function anAuthUserCanCreateNewThreads()
@@ -16,10 +20,43 @@ class CreateThreadsTest extends DatabaseTestCase
         $this->signIn();
 
         $thread = $this->make('App\Thread');
-        $this->post('/threads', $thread->toArray());
+        $response = $this->post('/threads', $thread->toArray());
 
-        $response = $this->get($thread->path());
-        $response->assertSee($thread->title)->assertSee($thread->body);
+        $this->get($response->headers->get('Location'))
+            ->assertSee($thread->title)
+            ->assertSee($thread->body);
+    }
+
+    /**
+     * @test
+     */
+    public function threadsRequireTitles()
+    {
+        $this->publishThread(['title' => null])
+            ->assertSessionHasErrors('title');
+    }
+
+    /**
+     * @test
+     */
+    public function threadsRequireBodies()
+    {
+        $this->publishThread(['body' => null])
+            ->assertSessionHasErrors('body');
+    }
+
+    /**
+     * @test
+     */
+    public function threadsRequireAChannel()
+    {
+        factory('App\Channel', 2)->create();
+
+        $this->publishThread(['channel_id' => null])
+            ->assertSessionHasErrors('channel_id');
+
+        $this->publishThread(['channel_id' => 999])
+            ->assertSessionHasErrors('channel_id');
     }
 
     /**
@@ -27,9 +64,18 @@ class CreateThreadsTest extends DatabaseTestCase
      */
     public function guestsCannotCreateThreads()
     {
-        $this->expectException(AuthenticationException::class);
-        $thread = $this->make('App\Thread');
+        $this->withExceptionHandling();
 
-        $this->post('/threads', $thread->toArray());
+        $this->get('/threads/create')->assertRedirect('/login');
+        $this->post('/threads')->assertRedirect('/login');
+    }
+
+    private function publishThread($overrides = [])
+    {
+        $this->withExceptionHandling()->signIn();
+
+        $thread = $this->make('App\Thread', $overrides);
+
+        return $this->post('/threads', $thread->toArray());
     }
 }

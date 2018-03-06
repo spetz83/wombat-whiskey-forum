@@ -45,4 +45,14 @@ class ThreadsTest extends DatabaseTestCase
         $response = $this->get($this->thread->path());
         $response->assertSee($reply->body);
     }
+
+    /**
+     * @test
+     */
+    public function threadsBelongToChannels()
+    {
+        $thread = $this->create(Thread::class);
+
+        $this->assertInstanceOf('App\Channel', $thread->channel);
+    }
 }

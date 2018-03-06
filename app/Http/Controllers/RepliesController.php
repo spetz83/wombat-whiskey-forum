@@ -35,12 +35,17 @@ class RepliesController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     *
+     * @param int $channelId
      * @param  \Illuminate\Http\Request  $request
+     * @param Thread $thread
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request, Thread $thread)
+    public function store($channelId, Request $request, Thread $thread)
     {
+        $this->validate($request, [
+            'body' => 'required'
+        ]);
+
         $thread->addReply([
             'body' => request('body'),
             'user_id' => auth()->id()
